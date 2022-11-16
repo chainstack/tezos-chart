@@ -1,0 +1,44 @@
+{{- if gt (int .Values.replicas) 0 }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+  {{- with .Values.ingress.additionalAnnotations }}
+      {{ toYaml . }}
+  {{- end }}
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    external-dns.alpha.kubernetes.io/ttl: "60"
+    prometheus.io/probe: "true"
+    {{- if .Values.ingress.rateLimit.enabled }}
+    nginx.ingress.kubernetes.io/limit-rps: {{ .Values.ingress.rateLimit.limitRps | quote }}
+    nginx.ingress.kubernetes.io/limit-rpm: {{ .Values.ingress.rateLimit.limitRpm | quote }}
+    {{- end }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.httpProxyReadTimeout | quote }}
+    nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.httpProxySendTimeout | quote }}
+    {{- if .Values.ingress.sticky.enabled }}
+    nginx.ingress.kubernetes.io/upstream-hash-by: {{ include "tezos.stickinessHashKey" . }}
+    {{- end }}
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+  name: {{ .Release.Name }}
+spec:
+  ingressClassName: {{ include "tezos.ingressClass" . }}
+  tls:
+  - hosts:
+    - {{ include "tezos.node.hostname" . }}
+    secretName: {{ include  "tezos.secret.name" . }}
+  rules:
+  - host: {{ include "tezos.node.hostname" . }}
+    http:
+      paths:
+      - path: /
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ template "tezos.serviceName" . }}
+            port:
+              name: tezos-rpc
+{{- end }}
+{{- end }}

@@ -1,0 +1,112 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+{{ include "labels.deployment" . | indent 4 }}
+spec:
+  strategy:
+    type: Recreate
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9489'
+        prometheus.io/path: '/metrics'
+      labels:
+{{ include "labels.deployment" . | indent 8 }}
+    spec:
+      securityContext:
+        runAsUser: {{ .Values.node.securityContext.runAsUser }}
+        fsGroup: {{ .Values.node.securityContext.fsGroup }}
+      terminationGracePeriodSeconds: 900
+      initContainers:
+        {{- include "tezos.init_container.snapshot_downloader" . | indent 8 }}  
+        {{- include "tezos.init_container.flush_node_identity" . | indent 8 }}
+        {{- include "tezos.init_container.config_init"         . | indent 8 }}
+        {{- include "tezos.init_container.config_generator"    . | indent 8 }}
+        {{- include "tezos.init_container.storage_upgrade"     . | indent 8 }}
+        {{- include "tezos.init_container.snapshot_importer"   . | indent 8 }}
+      containers:
+      - name: node
+        image: "{{ .Values.image.main.repository }}:{{ .Values.image.main.tag}}"
+        imagePullPolicy: IfNotPresent
+        command: ["/usr/local/bin/tezos-node"]
+        args: ["run", "--bootstrap-threshold", "0", "--config-file", "/etc/tezos/config.json"]
+        env:
+          - name: TEZOS_NODE_DIR
+            value: {{ include "tezos.dataDir" . }}
+
+{{- with .Values.nodeSelector }}
+        nodeSelector:
+{{ toYaml . | indent 12 }}
+{{- end }}
+        ports:
+        - containerPort: {{ .Values.rpcPort }}
+          name: tezos-rpc
+        - containerPort: {{ .Values.networkPort }}
+          name: tezos-net
+        volumeMounts:
+        - mountPath: /etc/tezos
+          name: config-volume
+        - mountPath: /var/tezos
+          name: var-volume
+        livenessProbe:
+          initialDelaySeconds: 600
+          periodSeconds: 60
+          timeoutSeconds: 40
+          httpGet:
+            path: /version
+            port: {{ .Values.rpcPort }}
+        readinessProbe:
+          initialDelaySeconds: 120
+          periodSeconds: 60
+          timeoutSeconds: 40
+          httpGet:
+            path: /version
+            port: {{ .Values.rpcPort }}
+        resources:
+{{ toYaml .Values.resources.regular | indent 10 }}
+      - name: metrics-exporter
+        image: ecadlabs/tezos_exporter
+        imagePullPolicy: IfNotPresent
+        args: ["-tezos-node-url", "http://localhost:{{ .Values.rpcPort }}"]
+        ports:
+        - name: http
+          containerPort: 9489
+          protocol: TCP
+        livenessProbe:
+          initialDelaySeconds: 600
+          periodSeconds: 60
+          timeoutSeconds: 40
+          httpGet:
+            path: /health
+            port: http
+        readinessProbe:
+          initialDelaySeconds: 120
+          periodSeconds: 60
+          timeoutSeconds: 40
+          httpGet:
+            path: /health
+            port: http
+        resources:
+{{ toYaml .Values.resources.metricsExporter | indent 10 }}
+      volumes:
+      - emptyDir: {}
+        name: config-volume
+      - name: var-volume
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}
+      {{- if .Values.snapshot.useSnapshot }}
+      - name: snapshot-downloader
+        configMap:
+          name: {{ .Release.Name }}-snapshot-downloader
+      - name: snapshot-importer
+        configMap:
+          name: {{ .Release.Name }}-snapshot-importer
+      {{- end }}

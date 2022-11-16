@@ -1,0 +1,6 @@
+---
+apiVersion: v2
+name: tezos-node
+version: 1.0.0
+description: Tezos node
+appVersion: "14.0"

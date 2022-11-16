@@ -1,0 +1,7 @@
+---
+tests:
+  runs:
+    - name: mainnet-dedicated
+      command: "helm3 upgrade h-test-tezos-mainnet-nd-624-666-666 . --install --set-string network.id=nw-133-283-8,network.name=mainnet,node.id=nd-624-666-666,cluster.name=CC-0003,cluster.domain=my.domain"
+    - name: testnet-with-external-snapshot
+      command: "helm3 upgrade h-test-tezos-testnet-nd-457-885-364 . --install --set-string network.id=nw-583-794-6,network.name=jakartanet,node.id=nd-457-885-364,persistence.storageClassName=ssd-dynamic,cluster.name=CC-0003,cluster.domain=my.domain --set snapshot.useSnapshot=true,snapshot.testnet.full=https://snapshots-tezos.giganode.io/snapshots/testnet_20220704-000413_BL52uo59HrkX6Zu9B1ENZuaTTr4cH1BJ8BGdcMhk47T1N2A5Lpi.full"

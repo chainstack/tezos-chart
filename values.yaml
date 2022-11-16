@@ -1,0 +1,97 @@
+---
+network:
+  id: nw-444-444-4
+  name: mainnet
+  genesis: ""
+  protocol:
+    bootstrapPeers: []
+    bootstrapMutez: "4000000000000"
+    expectedProofOfWork: 26
+    shouldGenerateUnsafeDeterministicData: false
+    # activation:
+
+node:
+  id: nd-444-444-444
+  archive: false  # false = full
+  securityContext:
+    runAsUser: 100
+    fsGroup: 65533
+
+accounts: {}
+
+image:
+  main:
+    repository: "tezos/tezos"
+    tag: "v14.0"
+  tools:
+    repository: "oxheadalpha/tezos-k8s-utils"
+    tag: "5.3.4"
+  pullPolicy: IfNotPresent
+
+# Snapshot sources:
+# https://snapshots-tezos.giganode.io/
+# https://xtz-shots.io
+snapshot:
+  useSnapshot: false
+  mainnet:
+    full: https://mainnet.xtz-shots.io/full
+ # testnet:
+   # full: https://snapshots-tezos.giganode.io # the link for snapshot if useSnapshot: true
+
+replicas: 1
+
+service:
+  enabled: true
+  selector: {}  # specify custom selector for the service
+
+deploymentLabels: {}  # specify custom labels for the deployment
+#  loadBalancer: tezos-mainnet-nd-123
+
+cluster:
+  name: gcp-apac-1
+  domain: my.domain
+
+rpcPort: 8732
+networkPort: 9732
+
+resources:
+  regular:
+    limits:
+      memory: 14Gi
+      cpu: 1500m
+    requests:
+      memory: 9Gi
+      cpu: 1500m
+  metricsExporter:
+    limits:
+      memory: 100Mi
+      cpu: 200m
+    requests:
+      memory: 50Mi
+      cpu: 100m
+persistence:
+  resourcePolicyKeep: false
+  storageClassName: standard
+  diskSize:
+    testnet:
+      full: 165Gi
+      archive: 100Gi
+    mainnet:
+      full: 500Gi
+      archive: 700Gi
+
+ingress:
+  enabled: true
+  sticky:
+    enabled: false
+    hashKey: # override here
+  class: # override here
+  rateLimit:
+    enabled: false
+    limitRps: 50 # per second per ip
+    limitRpm: 1500 # per minute per ip
+  httpProxyReadTimeout: 300
+  httpProxySendTimeout: 300
+  additionalAnnotations: {}
+
+nodeSelector: {}
