@@ -1,0 +1,26 @@
+{{- if gt (int .Values.replicas) 0 }}
+{{- if .Values.service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+  annotations:
+    prometheus.io/probe-tcp: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - name: tezos-rpc
+      port: {{ .Values.rpcPort }}
+    - name: tezos-net-udp
+      port: {{ .Values.networkPort }}
+      protocol: UDP
+    - name: tezos-net-tcp
+      port: {{ .Values.networkPort }}
+      protocol: TCP
+  selector:
+{{ include "labels.serviceSelector" . | indent 4 }}
+{{- end }}
+{{- end }}

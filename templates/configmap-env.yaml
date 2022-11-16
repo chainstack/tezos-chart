@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-tezos-config
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+data:
+  MY_POD_NAME: "{{ .Release.Name }}-0"
+  MY_NODE_TYPE: "regular"
+  MY_POD_TYPE: "node"
+  CHAIN_NAME: "{{ .Values.network.name }}"
+  CHAIN_PARAMS: |
+    {
+      "bootstrap_peers": {{ toJson .Values.network.protocol.bootstrapPeers }},
+      "default_bootstrap_mutez": "{{ .Values.network.protocol.bootstrapMutez }}",
+      "expected-proof-of-work": {{ toJson .Values.network.protocol.expectedProofOfWork }},
+
+      "should_generate_unsafe_deterministic_data": {{ toJson .Values.network.protocol.shouldGenerateUnsafeDeterministicData }},
+      "network": {
+        "chain_name": "{{ .Values.network.name }}"
+      }
+    }
+  NODES: |
+    {
+      "{{ .Release.Name }}": {
+        "instances": [{
+          "is_bootstrap_node": false,
+          "config": {
+            "shell": {
+              "history_mode": {{ include "tezos.historyMode" . | quote }}
+            }
+          }
+        }]
+      }
+    }
+  SIGNERS: "{}"
+  OPEN_ACLS: "true"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-tezos-secret
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+data:
+  ACCOUNTS: |
+    {{ .Values.accounts | toJson | b64enc }}
+
+{{- if .Values.snapshot.useSnapshot }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-snapshot-downloader
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+data:
+  snapshotDownloader.sh: |-
+    {{- $.Files.Get "files/snapshot-downloader.sh"  | nindent 6 -}}
+{{- end }}
+
+{{- if .Values.snapshot.useSnapshot }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-snapshot-importer
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+data:
+  snapshotImporter.sh: |-
+    {{- $.Files.Get "files/snapshot-importer.sh"  | nindent 6 -}}
+{{- end }}

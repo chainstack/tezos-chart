@@ -1,0 +1,30 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}
+  annotations:
+    {{- if .Values.persistence.resourcePolicyKeep }}
+    "helm.sh/resource-policy": keep
+    {{- end }}
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      {{- if include "tezos.isTestnet" . }}
+      {{- if .Values.node.archive }}
+      storage: {{ .Values.persistence.diskSize.testnet.archive | quote }}
+      {{- else }}
+      storage: {{ .Values.persistence.diskSize.testnet.full | quote }}
+      {{- end }}
+      {{- else }}
+      {{- if .Values.node.archive }}
+      storage: {{ .Values.persistence.diskSize.mainnet.archive | quote }}
+      {{- else }}
+      storage: {{ .Values.persistence.diskSize.mainnet.full | quote }}
+      {{- end }}
+      {{- end }}
+  storageClassName: {{ .Values.persistence.storageClassName | quote }}

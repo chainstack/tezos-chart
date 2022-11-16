@@ -1,0 +1,25 @@
+---
+protocol:
+  client: octez
+  version: {{ .Chart.AppVersion }}
+  network: {{ .Values.network.name }}
+  historyMode: {{ include "tezos.historyMode" . }}
+  archive: {{ .Values.node.archive }}
+connection:
+  rpc: https://{{ include "tezos.node.hostname" . }}
+resources:
+  cpu: {{ .Values.resources.regular.requests.cpu }}
+  memory: {{ .Values.resources.regular.requests.memory }}
+{{- if include "tezos.isTestnet" . }}
+{{- if .Values.node.archive }}
+  storage: {{ .Values.persistence.diskSize.testnet.archive }}
+{{- else }}
+  storage: {{ .Values.persistence.diskSize.testnet.full }}
+{{- end }}
+{{- else }}
+{{- if .Values.node.archive }}
+  storage: {{ .Values.persistence.diskSize.mainnet.archive }}
+{{- else }}
+  storage: {{ .Values.persistence.diskSize.mainnet.full }}
+{{- end }}
+{{- end }}
